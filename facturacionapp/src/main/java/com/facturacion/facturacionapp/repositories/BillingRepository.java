@@ -1,6 +1,8 @@
 package com.facturacion.facturacionapp.repositories;
 
 import org.springframework.stereotype.Repository;
+
+import com.facturacion.facturacionapp.exceptions.ResourceNotFoundException;
 import com.facturacion.facturacionapp.models.*;
 
 import java.util.*;
@@ -12,136 +14,88 @@ import java.util.logging.Logger;
 public class BillingRepository {
     private static final Logger logger = Logger.getLogger(BillingRepository.class.getName());
 
-    private final Map<Long, Client> clients = new ConcurrentHashMap<>();
-    private final Map<Long, VeterinaryService> services = new ConcurrentHashMap<>();
-    private final Map<Long, Bill> bills = new ConcurrentHashMap<>();
+    private final List<Client> clients = new ArrayList<>();
+    private final List<VeterinaryService> services = new ArrayList<>();
+    private final List<Bill> bills = new ArrayList<>();
 
     private long clientIdCounter = 1;
     private long serviceIdCounter = 1;
     private long billIdCounter = 1;
 
     public BillingRepository() {
-        // Inicializa los datos
-        populateData();
-    }
+        try {
+            // Poblar services
+            VeterinaryService consulta = new VeterinaryService(serviceIdCounter++, "Consulta", "Consulta médica con especialista", 15000);
+            VeterinaryService examen = new VeterinaryService(serviceIdCounter++, "Examen", "Exámenes médicos", 25000);
+            VeterinaryService cirugia = new VeterinaryService(serviceIdCounter++, "Cirugía", "Intervención quirúrgica", 40000);
+            services.addAll(List.of(consulta, examen, cirugia));
 
-    // Método para poblar datos de prueba
-    public void populateData() {
-        logger.info("Ejecutando populateData...");
+            // Poblar clients
+            Client seba = new Client(clientIdCounter++, "Seba Cortés", "Barrancas", "123-456-7890");
+            Client nata = new Client(clientIdCounter++, "Nata Soto", "Llo Lleo", "987-654-3210");
+            Client chris = new Client(clientIdCounter++, "Chris Gamboa", "Independencia", "555-666-7777");
+            Client pipe = new Client(clientIdCounter++, "Pipe Guerrero", "Las Dunas", "111-222-3333");
+            clients.addAll(List.of(seba, nata, chris, pipe));
 
-        // Poblar servicios
-        populateServices();
+            // Generar bills
+            Bill bill1 = new Bill(billIdCounter++, seba);
+            bill1.addDetail(new BillDetail(consulta, 1));
+            
+            Bill bill2 = new Bill(billIdCounter++, nata);
+            bill2.addDetail(new BillDetail(consulta, 1));
+            bill2.addDetail(new BillDetail(examen, 1));
+            
+            Bill bill3 = new Bill(billIdCounter++, chris);
+            bill3.addDetail(new BillDetail(examen, 1));
+            bill3.addDetail(new BillDetail(cirugia, 1));
+            
+            Bill bill4 = new Bill(billIdCounter++, pipe);
+            bill4.addDetail(new BillDetail(consulta, 1));
+            bill4.addDetail(new BillDetail(examen, 1));
+            bill4.addDetail(new BillDetail(cirugia, 1));
+            
+            bills.addAll(List.of(bill1, bill2, bill3, bill4));
 
-        // Poblar clientes
-        populateClients();
+            logger.info("Clientes registrados: " + clients.size());
+            logger.info("Facturas generadas: " + bills.size());
 
-        // Generar facturas para cada cliente
-        generateBills();
-
-        logger.info("Clientes registrados: " + clients.size());
-        logger.info("Facturas generadas: " + bills.size());
-    }
-
-    private void populateServices() {
-        addService("Consulta", "Consulta médica con especialista", 15000);
-        addService("Examen", "Exámenes médicos", 25000);
-        addService("Cirugía", "Intervención quirúrgica", 40000);
-    }
-
-    private void addService(String name, String description, int price) {
-        VeterinaryService service = new VeterinaryService(serviceIdCounter++, name, description, price);
-        services.put(service.getId(), service);
-    }
-
-    private void populateClients() {
-        addClient("Seba Cortés", "Barrancas", "123-456-7890");
-        addClient("Nata Soto", "Llo Lleo", "987-654-3210");
-        addClient("Chris Gamboa", "Independencia", "555-666-7777");
-        addClient("Pipe Guerrero", "Las Dunas", "111-222-3333");
-    }
-
-    private void addClient(String name, String address, String phone) {
-        Client client = new Client(clientIdCounter++, name, address, phone);
-        clients.put(client.getId(), client);
-    }
-
-    private void generateBills() {
-        associateBillsToClient(1L, List.of(1L));
-        associateBillsToClient(2L, List.of(1L, 2L));
-        associateBillsToClient(3L, List.of(2L, 3L));
-        associateBillsToClient(4L, List.of(1L, 2L, 3L));
-    }
-
-    // private void associateBillsToClient(Long clientId, List<Long> serviceIds) {
-    //     Client client = clients.get(clientId);
-    //     if (client == null) {
-    //         logger.warning("Client with ID " + clientId + " not found.");
-    //         return;
-    //     }
-
-    //     for (Long serviceId : serviceIds) {
-    //         VeterinaryService service = services.get(serviceId);
-    //         if (service == null) {
-    //             logger.warning("Service with id " + serviceId + " not found.");
-    //             continue;
-    //         }
-
-    //         Bill bill = new Bill(billIdCounter++, client);
-    //         bill.addDetail(new BillDetail(service, 1));
-    //         bills.put(bill.getId(), bill);
-    //     }
-    // }
-    private void associateBillsToClient(Long clientId, List<Long> serviceIds) {
-        Client client = clients.get(clientId);
-        if (client == null) {
-            logger.warning("Client with ID " + clientId + " not found.");
-            return;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    
-        // Crear una única factura para el cliente
-        Bill bill = new Bill(billIdCounter++, client);
-    
-        for (Long serviceId : serviceIds) {
-            VeterinaryService service = services.get(serviceId);
-            if (service == null) {
-                logger.warning("Service with ID " + serviceId + " not found.");
-                continue;
-            }
-    
-            // Agregar cada servicio a los detalles de la factura
-            bill.addDetail(new BillDetail(service, 1));
-        }
-    
-        // Guardar la factura con todos los servicios agregados
-        bills.put(bill.getId(), bill);
     }
-    
 
-    // Listar clients
     public List<Client> listClients() {
-        return new ArrayList<>(clients.values());
+        return new ArrayList<>(clients);
     }
-    // Listar Services
+
     public List<VeterinaryService> listServices() {
-        return new ArrayList<>(services.values());
+        return new ArrayList<>(services);
     }
 
-    // Listar bills
     public List<Bill> listBills() {
-        return new ArrayList<>(bills.values());
+        return new ArrayList<>(bills);
     }
 
-    // Obtener client por ID
-    public Optional<Client> getClientById(Long id) {
-        return Optional.ofNullable(clients.get(id));
-    }
-    // Obtener service por ID
-    public Optional<VeterinaryService> getServiceById(Long id) {
-        return Optional.ofNullable(services.get(id));
+    public Client getClientById(Long id) {
+        return clients.stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Client with ID " + id + " not found"));
     }
 
-    // Obtener bill por ID
-    public Optional<Bill> getBillById(Long id) {
-        return Optional.ofNullable(bills.get(id));
+    public VeterinaryService getServiceById(Long id) {
+        return services.stream()
+                .filter(s -> s.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("VeterinaryService with ID " + id + " not found"));
     }
+
+    public Bill getBillById(Long id) {
+        return bills.stream()
+                .filter(b -> b.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Bill with ID " + id + " not found"));
+    }
+
 }
+

@@ -1,4 +1,5 @@
 package com.facturacion.facturacionapp.controllers;
+import com.facturacion.facturacionapp.responses.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -8,6 +9,7 @@ import com.facturacion.facturacionapp.models.*;
 import com.facturacion.facturacionapp.services.BillService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/billing")
@@ -18,13 +20,11 @@ public class BillingController {
         this.billService = billService;
     }
 
-    // Endpoint para listar todas las facturas
     @GetMapping("/bills")
     public List<Bill> getBills() {
         return billService.getAllBills();
     }
 
-    // Nuevo endpoint para obtener todos los clientes
     @GetMapping("/clients")
     public List<Client> getClients() {
         return billService.getAllClients();
@@ -35,38 +35,56 @@ public class BillingController {
     }
 
     @GetMapping("/clients/{id}")
-    public Client getClientById(@PathVariable("id") Long id) {
-        return billService.getClientById(id);
+    public ResponseEntity<?> getClientById(@PathVariable("id") Long id) {
+        try {
+            Client client = billService.getClientById(id);
+            return new ResponseEntity<>(client, HttpStatus.OK);
+        } catch (ResourceNotFoundException ex) {
+            ErrorResponse errorResponse = new ErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND.value());
+            return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND); // Devuelve 404 con el mensaje de error
+        }
     }
+    
     @GetMapping("/services/{id}")
-    public VeterinaryService getServiceById(@PathVariable("id") Long id) {
-        return billService.getServiceById(id);
+    public ResponseEntity<?> getServiceById(@PathVariable("id") Long id) {
+        try {
+            VeterinaryService service = billService.getServiceById(id);
+            return new ResponseEntity<>(service, HttpStatus.OK);
+        } catch (ResourceNotFoundException ex) {
+            ErrorResponse errorResponse = new ErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND.value());
+            return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND); // Devuelve 404 con el mensaje de error
+        }
     }
 
-    // Endpoint para obtener una factura por ID
     @GetMapping("/bills/{id}")
-    public Bill getBillById(@PathVariable("id") Long id) {
-        return billService.getBillById(id);
+    public ResponseEntity<?> getBillById(@PathVariable("id") Long id) {
+        try {
+            Bill bill = billService.getBillById(id);
+            return new ResponseEntity<>(bill, HttpStatus.OK);
+        } catch (ResourceNotFoundException ex) {
+            ErrorResponse errorResponse = new ErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND.value());
+            return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND); // Devuelve 404 con el mensaje de error
+        }
     }
 
     @GetMapping("/pay/{billId}")
     public ResponseEntity<String> payBill(@PathVariable("billId") Long billId) {
         try {
-            // Llamamos al servicio para pagar la factura
             String response = billService.payBill(billId);
-            return new ResponseEntity<>(response, HttpStatus.OK); // 200 OK si la factura fue pagada
+            return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (ResourceNotFoundException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND); // 404 si la factura no se encuentra
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         }
     }
-    // getDetails
+    
     @GetMapping("/details/{billId}")
     public ResponseEntity<?> getBillDetails(@PathVariable("billId") Long billId) {
         try {
-            ResponseEntity details = billService.getBillDetails(billId);
+            Map<String, Object> details = billService.getBillDetails(billId);
             return ResponseEntity.ok(details);
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
+
 }
